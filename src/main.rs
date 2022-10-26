@@ -11,6 +11,7 @@ use solana_client::tpu_client::TpuClientConfig;
 use solana_program::instruction::Instruction;
 use solana_program::message::Message;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::client::AsyncClient;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
@@ -46,10 +47,10 @@ async fn tpuclientsendtransaction(program_id: Pubkey, payer: &Keypair){
     println!("{}",x);
 }
 
-fn lightclientsendtransaction(program_id: Pubkey, payer: &Keypair){
-    let rpc_addr="0.0.0.0:8899".parse::<SocketAddr>().unwrap();
-    let tpu_addr="0.0.0.0:1027".parse::<SocketAddr>().unwrap();
-    let connectioncache=connection_cache::ConnectionCache::new(2000);
+fn thinclientsendtransaction(program_id: Pubkey, payer: &Keypair){
+    let rpc_addr="127.0.0.1:8899".parse::<SocketAddr>().unwrap();
+    let tpu_addr="127.0.0.1:1027".parse::<SocketAddr>().unwrap();
+    let connectioncache=connection_cache::ConnectionCache::new(20000000);
     let client=ThinClient::new(rpc_addr, tpu_addr, Arc::new(connectioncache));
     let bankins=BankInstruction::Initialize;
     let instruction = Instruction::new_with_borsh(
@@ -57,16 +58,16 @@ fn lightclientsendtransaction(program_id: Pubkey, payer: &Keypair){
         &bankins,
         vec![],
     );
-    
+
     let message = Message::new(
         &[instruction],
         Some(&payer.pubkey()),
     );
-
     let blockhash = client.rpc_client().get_latest_blockhash().unwrap();
-    let mut tx = Transaction::new(&[payer], message, blockhash);
-    let x=client.send_and_confirm_transaction(&[payer], &mut tx, 20000, 0).unwrap();
-    println!("{x}");
+    let tx = Transaction::new(&[payer], message, blockhash);
+    let x=client.async_send_transaction(tx).unwrap();
+    //let x=client.get_account(&program_id).unwrap();
+    println!("{:#?}",x);
 }
 
 fn main() {
@@ -74,5 +75,5 @@ fn main() {
     let payer=Keypair::new();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(tpuclientsendtransaction(program_id, &payer));
-    lightclientsendtransaction(program_id, &payer);
+    thinclientsendtransaction(program_id, &payer);
 }
